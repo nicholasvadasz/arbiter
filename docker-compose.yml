@@ -1,0 +1,21 @@
+version: "3.3"
+services:
+  main:
+    build:
+      context: .
+      dockerfile: "Dockerfile"
+    runtime: "nvidia"
+    ports:
+      - "8888:8888"
+      - "9999:9999"
+    shm_size: "1g"
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - "~/chess_data:/data"
+      - "~/chess-recognition/config:/config"
+      - "~/chess-recognition/runs:/chess/runs"
+      - "~/chess-recognition/results:/chess/results"
+      - "~/chess-recognition/models:/chess/models"
+      - "~/scratch:/chess/scratch"

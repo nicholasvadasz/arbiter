@@ -1,0 +1,18 @@
+_BASE_: config://_classifier_base.yaml
+
+DATASET:
+  PATH: data://occupancy
+  CLASSES:
+    - empty
+    - occupied
+  BATCH_SIZE: 128
+  TRANSFORMS:
+    CENTER_CROP: [100, 100]
+    RESIZE: [100, 100]
+    RANDOM_HORIZONTAL_FLIP: .5
+  PHASES:
+    - PARAMS: all
+      EPOCHS: 3
+      OPTIMIZER:
+        NAME: Adam
+        LEARNING_RATE: 0.001
