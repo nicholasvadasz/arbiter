@@ -12,6 +12,16 @@ This repository contains the official code for the paper:
 
 I originally developed this project as part of my [master thesis](https://github.com/georg-wolflein/chesscog-report/raw/master/report.pdf) at the University of St Andrews. Documentation is available [here](https://georg-wolflein.github.io/chesscog).
 
+## [Final Project] TO-DO
+
+**[Pg. 112 (Appendix C)](https://github.com/georg-wolflein/chesscog-report/raw/master/report.pdf): Contains scripts for training/fine-tuning and data rendering**
+1. **Fine-tuning of Classification** In chesscog/core/training/train.py, try first
+a) Generating all possible moves using API
+b) One v All Head for dynamic classification
+
+2. **Dataset Rendering** Play around with blender script and generate more data. Maybe try data augmentation techniques directly there i.e. blurring, cropping, lighting alterations, etc.
+
+
 ## Related repositories
 
 - [chesscog-report](https://github.com/georg-wolflein/chesscog-report): the master thesis
