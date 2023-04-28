@@ -1,0 +1,40 @@
+DATASET:
+  BATCH_SIZE: 128
+  CLASSES:
+    - empty
+    - occupied
+  PATH: data://occupancy
+  TRANSFORMS:
+    CENTER_CROP: null
+    RESIZE:
+      - 100
+      - 100
+    RANDOM_HORIZONTAL_FLIP: .5
+    COLOR_JITTER:
+      BRIGHTNESS: 0.
+      CONTRAST: 0.
+      SATURATION: 0.
+      HUE: 0.
+    SHEAR: null
+    SCALE:
+      VERTICAL: null
+      HORIZONTAL: null
+    TRANSLATE:
+      VERTICAL: null
+      HORIZONTAL: null
+  WORKERS: 2
+TRAINING:
+  MODEL:
+    NAME: ResNet
+    REGISTRY: OCCUPANCY_CLASSIFIER
+  PHASES:
+    - EPOCHS: 1
+      OPTIMIZER:
+        LEARNING_RATE: 0.001
+        NAME: Adam
+      PARAMS: head
+    - EPOCHS: 2
+      OPTIMIZER:
+        LEARNING_RATE: 0.0001
+        NAME: Adam
+      PARAMS: all
