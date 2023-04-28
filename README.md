@@ -1,3 +1,12 @@
+## [Final Project] TO-DO
+
+**[Pg. 112 (Appendix C)](https://github.com/georg-wolflein/chesscog-report/raw/master/report.pdf): Contains scripts for training/fine-tuning and data rendering**
+1. **Fine-tuning of Classification** Generating all possible moves using python-chess API, then somehow creating a 'smart' head for the evaluation task
+
+2. **Video Pipeline** Create quick video processing script to see if feasible.
+
+3. **Dataset Rendering** Play around with blender script and generate more data. Maybe try data augmentation techniques directly there i.e. blurring, cropping, lighting alterations, etc.
+
 # chesscog
 
 ![build](https://github.com/georg-wolflein/chesscog/workflows/build/badge.svg)
@@ -11,6 +20,7 @@ This repository contains the official code for the paper:
 > _Journal of Imaging_, vol. 7, no. 6, p. 94, June 2021.
 
 I originally developed this project as part of my [master thesis](https://github.com/georg-wolflein/chesscog-report/raw/master/report.pdf) at the University of St Andrews. Documentation is available [here](https://georg-wolflein.github.io/chesscog).
+
 
 ## Related repositories
 
