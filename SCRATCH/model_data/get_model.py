@@ -3,7 +3,9 @@ import torch
 from torch import nn
 from model_data.utils import get_classes, get_anchors, create_model
 from torchvision import models
-from recap import URI, CfgNode as CN
+from collections import namedtuple
+import os
+import yaml
 
 
 class ResNet(nn.Module):
@@ -43,15 +45,53 @@ def get_yolo():
     
     return model
 
+def dict2obj(d):
+     
+    # checking whether object d is a
+    # instance of class list
+    if isinstance(d, list):
+           d = [dict2obj(x) for x in d]
+ 
+    # if d is not a instance of dict then
+    # directly object is returned
+    if not isinstance(d, dict):
+           return d
+  
+    # declaring a class
+    class C:
+        pass
+  
+    # constructor of the class passed to obj
+    obj = C()
+  
+    for k in d:
+        obj.__dict__[k] = dict2obj(d[k])
+  
+    return obj
+
 
 def get_occupancy():
     occupancy_model = ResNet()
-    occupancy_model, occupancy_cfg = torch.jit.load('model_data/chesscog_model.tjm'), CN.load_yaml_with_base("model_data/ResNet.yaml")
+
+    # occupancy_model, occupancy_cfg = torch.jit.load('model_data/chesscog_model.tjm'), CN.load_yaml_with_base("model_data/ResNet.yaml")
+    # occupancy_cfg = CN.load_yaml_with_base("model_data/ResNet.yaml")
+    occupancy_model = torch.jit.load('model_data/chesscog_model.tjm')
+    #occupancy_cfg = CN.load_yaml_with_base("model_data/ResNet.yaml")
+    #  use a different package to load the yaml file
+    # occupancy_cfg = CN.load_yaml_with_base("model_data/ResNet.yaml", allow_unsafe=True)
+    occupancy_cfg = yaml.load(open("model_data/ResNet.yaml"), Loader=yaml.FullLoader)
+
+    occupancy_cfg = dict2obj(occupancy_cfg)
+    
 
     return occupancy_model, occupancy_cfg
 
 def get_corner():
-    corner_detection_cfg = CN.load_yaml_with_base(
-            "model_data/corner_detection.yaml")
+    # corner_detection_cfg = CN.load_yaml_with_base(
+    #         "model_data/corner_detection.yaml", allow_unsafe=True)
+    corner_detection_cfg = yaml.load(open("model_data/corner_detection.yaml"), Loader=yaml.FullLoader)
+    # convert into object
+    corner_detection_cfg = dict2obj(corner_detection_cfg)
+
     
     return corner_detection_cfg

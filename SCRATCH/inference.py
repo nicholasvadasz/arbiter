@@ -10,7 +10,6 @@ import typing
 
 from keras.optimizers import Adam
 from pathlib import Path
-from recap import URI, CfgNode as CN
 from collections.abc import Iterable
 from chess import Status
 from model_data.get_model import get_yolo, get_occupancy, get_corner
