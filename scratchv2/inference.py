@@ -5,7 +5,9 @@ import torch
 import functools
 import logging
 import tensorflow as tf
+import typing
 import os
+import argparse
 
 from recap import URI, CfgNode as CN
 from collections.abc import Iterable
@@ -97,6 +99,13 @@ class Arbiter:
 
             return board, warped, segmented_img, temp_occ
         
+    def predict_just_occupancy(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
+        corners = find_corners(corner_cfg, img)
+        occupancy, _, _ = self.classify_occupancy(img, turn, corners)
+        occupancy = np.array(occupancy).reshape(8, 8)
+        occupancy = np.transpose(np.flip(np.flip(occupancy, axis=0), axis=1))
+        return occupancy
+        
     def piecewise_predict(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
         '''
         Poor performance when we predict square by square, showing that our model is likely
@@ -160,15 +169,22 @@ class Arbiter:
 
         
 if __name__ == '__main__':   
-    img = cv2.imread('testing.jpg')
+    # add argument that determines if we are predicting or just making occupancy dataset
+    parser = argparse.ArgumentParser(
+            description="Run the chess recognition pipeline on an input image")
+    parser.add_argument('--occupancy', action='store_true', help='Only predict occupancy')
+    args = parser.parse_args()
+
+    img = cv2.imread('warped.jpg')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     recognizer = Arbiter()
-    board, warped, segmented_img, temp_occ = recognizer.predict(img)
-    print(f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
-    segmented_img.show()
-
-
-
+    if not args.occupancy: 
+        board, warped, segmented_img, temp_occ = recognizer.predict(img)
+        print(f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
+        segmented_img.show()
+    else:
+        occupancy1 = recognizer.predict_just_occupancy(img)
+        print(occupancy1)
 
     ### 4) FULL CLASSIFICATION (combining occupancy and YOLO) // might need some helpers to abstract this into the class
 
