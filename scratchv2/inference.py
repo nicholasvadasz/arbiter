@@ -5,12 +5,9 @@ import torch
 import functools
 import logging
 import tensorflow as tf
-<<<<<<< HEAD
-import os
-=======
 import typing
+import os
 import argparse
->>>>>>> d08369c (occupany predictor)
 
 from recap import URI, CfgNode as CN
 from collections.abc import Iterable
@@ -102,7 +99,6 @@ class Arbiter:
             return board, warped, segmented_img, temp_occ
         
     def predict_just_occupancy(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
-        img, _ = resize_image(corner_cfg, img)
         corners = find_corners(corner_cfg, img)
         occupancy, _, _ = self.classify_occupancy(img, turn, corners)
         occupancy = np.array(occupancy).reshape(8, 8)
