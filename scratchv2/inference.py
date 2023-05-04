@@ -14,7 +14,7 @@ from model_data.yolo import YOLO as yolo
 from utils import create_dataset as create_occupancy_dataset
 from utils.transforms import build_transforms
 from utils.datasets import Datasets
-from utils.detect_corners import find_corners
+from utils.detect_corners import find_corners, resize_image
 from utils.setup import device, detect_img, piece_dict
 from PIL import Image
 
@@ -60,6 +60,7 @@ class Arbiter:
     def predict(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
         with torch.no_grad():
             from timeit import default_timer as timer
+            img, img_scale = resize_image(corner_cfg, img)
             t1 = timer()
             corners = find_corners(corner_cfg, img)
             occupancy, warped, cached_imgs = self.classify_occupancy(img, turn, corners)

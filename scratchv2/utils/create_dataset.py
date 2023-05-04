@@ -15,16 +15,15 @@ Note that before running this module requires the rendered dataset to be downloa
 """
 
 from pathlib import Path
-import matplotlib.pyplot as plt
+import matplotlib.pyplot
 import cv2
-from PIL import Image, ImageDraw
+from PIL import Image
 import json
 import numpy as np
 import chess
 import os
 import shutil
 from recap import URI
-import argparse
 
 RENDERS_DIR = None
 OUT_DIR = None
@@ -148,9 +147,3 @@ def create_dataset(input_dir: Path = RENDERS_DIR, output_dir: Path = OUT_DIR):
                 print(f"{i / len(samples)*100:.0f}%")
             _extract_squares_from_sample(img_file.stem, subset,
                                          input_dir, output_dir)
-
-
-if __name__ == "__main__":
-    argparse.ArgumentParser(
-        description="Create the dataset for occupancy classification.").parse_args()
-    create_dataset()
