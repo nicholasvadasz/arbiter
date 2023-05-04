@@ -1,28 +1,24 @@
 import numpy as np
 from keras.layers import Input, Lambda
 from keras.models import Model
-from keras.optimizers import Adam
 import keras.backend as K
 
-from model_data.yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
+from model_data.yolo3.model import yolo_body, yolo_loss
 
 def get_classes(classes_path):
-    '''loads the classes'''
     with open(classes_path) as f:
         class_names = f.readlines()
     class_names = [c.strip() for c in class_names]
     return class_names
 
 def get_anchors(anchors_path):
-    '''loads the anchors from a file'''
     with open(anchors_path) as f:
         anchors = f.readline()
     anchors = [float(x) for x in anchors.split(',')]
     return np.array(anchors).reshape(-1, 2)
 
 def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze_body=2,
-            weights_path='model_data/trained_weights_final.h5'):
-    '''create the training model'''
+            weights_path='model_data/raw_models/trained_weights_final.h5'):
     K.clear_session() # get a new session
     image_input = Input(shape=(None, None, 3))
     h, w = input_shape
@@ -38,7 +34,6 @@ def create_model(input_shape, anchors, num_classes, load_pretrained=True, freeze
         model_body.load_weights(weights_path, by_name=True, skip_mismatch=True)
         print('Load weights {}.'.format(weights_path))
         if freeze_body in [1, 2]:
-            # Freeze darknet53 body or freeze all but 3 output layers.
             num = (185, len(model_body.layers)-3)[freeze_body-1]
             for i in range(num): model_body.layers[i].trainable = False
             print('Freeze the first {} layers of total {} layers.'.format(num, len(model_body.layers)))

@@ -262,7 +262,7 @@ def _cluster_horizontal_and_vertical_lines(lines: np.ndarray):
     thetas = lines[..., 1].reshape(-1, 1)
     distance_matrix = pairwise_distances(
         thetas, thetas, metric=_absolute_angle_difference)
-    agg = AgglomerativeClustering(n_clusters=2, affinity="precomputed",
+    agg = AgglomerativeClustering(n_clusters=2, metric="precomputed",
                                   linkage="average")
     clusters = agg.fit_predict(distance_matrix)
 
@@ -297,21 +297,6 @@ def _eliminate_similar_lines(lines: np.ndarray, perpendicular_lines: np.ndarray)
 
 
 def get_intersection_point(rho1: np.ndarray, theta1: np.ndarray, rho2: np.ndarray, theta2: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray]:
-    """Obtain the intersection point of two lines in Hough space.
-
-    This method can be batched
-
-    Args:
-        rho1 (np.ndarray): first line's rho
-        theta1 (np.ndarray): first line's theta
-        rho2 (np.ndarray): second lines's rho
-        theta2 (np.ndarray): second line's theta
-
-    Returns:
-        typing.Tuple[np.ndarray, np.ndarray]: the x and y coordinates of the intersection point(s)
-    """
-    # rho1 = x cos(theta1) + y sin(theta1)
-    # rho2 = x cos(theta2) + y sin(theta2)
     cos_t1 = np.cos(theta1)
     cos_t2 = np.cos(theta2)
     sin_t1 = np.sin(theta1)
@@ -337,15 +322,6 @@ def _get_intersection_points(horizontal_lines: np.ndarray, vertical_lines: np.nd
 
 
 def compute_transformation_matrix(src_points: np.ndarray, dst_points: np.ndarray) -> np.ndarray:
-    """Compute the transformation matrix based on source and destination points.
-
-    Args:
-        src_points (np.ndarray): the source points (shape: [..., 2])
-        dst_points (np.ndarray): the source points (shape: [..., 2])
-
-    Returns:
-        np.ndarray: the transformation matrix
-    """
     transformation_matrix, _ = cv2.findHomography(src_points.reshape(-1, 2),
                                                   dst_points.reshape(-1, 2))
     return transformation_matrix
@@ -381,7 +357,6 @@ def _find_best_scale(cfg: CN, values: np.ndarray, scales: np.ndarray = np.arange
 
     best_num_inliers = np.max(num_inliers)
 
-    # We will choose a slightly worse scale if it is lower
     index = np.argmax(num_inliers > (
         1 - cfg.RANSAC.BEST_SOLUTION_TOLERANCE) * best_num_inliers)
     return scales[index], inlier_mask[..., index]
@@ -394,7 +369,6 @@ def _discard_outliers(cfg: CN, warped_points: np.ndarray, intersection_points: n
         cfg, warped_points[..., 1])
     mask = horizontal_mask & vertical_mask
 
-    # Keep rows/cols that have more than 50% inliers
     num_rows_to_consider = np.any(mask, axis=-1).sum()
     num_cols_to_consider = np.any(mask, axis=-2).sum()
     rows_to_keep = mask.sum(axis=-1) / num_rows_to_consider > \
@@ -502,26 +476,3 @@ def _compute_horizontal_borders(cfg: CN, warped: np.ndarray, mask: np.ndarray, s
         else:
             ymin -= 1
     return ymin, ymax
-
-
-if __name__ == "__main__":
-    import matplotlib.pyplot as plt
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Chessboard corner detector.")
-    parser.add_argument("file", type=str, help="URI of the input image file")
-    parser.add_argument("--config", type=str, help="path to the config file",
-                        default="config://corner_detection.yaml")
-    args = parser.parse_args()
-
-    cfg = CN.load_yaml_with_base(args.config)
-    filename = URI(args.file)
-    img = cv2.imread(str(filename))
-    corners = find_corners(cfg, img)
-
-    fig = plt.figure()
-    fig.canvas.set_window_title("Corner detection output")
-    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    plt.scatter(*corners.T, c="r")
-    plt.axis("off")
-    plt.show()

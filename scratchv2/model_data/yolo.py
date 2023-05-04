@@ -16,15 +16,12 @@ from PIL import Image, ImageFont, ImageDraw
 from model_data.yolo3.model import yolo_eval, yolo_body, tiny_yolo_body
 from model_data.yolo3.utils import letterbox_image
 import os
-import chess
 
 class YOLO(object):
     _defaults = {
-        "model_path": 'model_data/trained_weights_final.h5',
-        "anchors_path": 'model_data/yolo_anchors.txt',
-        "classes_path": 'model_data/_classes.txt',
-        #"score" : 0.3,
-        #"iou" : 0.45,
+        "model_path": 'model_data/raw_models/trained_weights_final.h5',
+        "anchors_path": 'model_data/model_info/yolo_anchors.txt',
+        "classes_path": 'model_data/model_info/_classes.txt',
         "score" : 0.15,
         "iou" : 0.45,
         "model_image_size" : (416, 416),

@@ -3,122 +3,35 @@ import chess
 import cv2
 import torch
 import functools
-import sys
 import logging
 import tensorflow as tf
-import typing
+import os
 
-from keras.optimizers import Adam
-from pathlib import Path
 from recap import URI, CfgNode as CN
 from collections.abc import Iterable
-from chess import Status
-from model_data.get_model import get_yolo, get_occupancy, get_corner
+from model_data.get_models import get_yolo, get_occupancy, get_corner
 from model_data.yolo import YOLO as yolo
 from utils import create_dataset as create_occupancy_dataset
 from utils.transforms import build_transforms
 from utils.datasets import Datasets
-from utils.detect_corners import find_corners, resize_image
-from PIL import Image, ImageFont, ImageDraw
+from utils.detect_corners import find_corners
+from utils.setup import device, detect_img, piece_dict
+from PIL import Image
 
+### Suppressing error messaging
 tf.get_logger().setLevel(logging.ERROR)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 ### 1) MODEL INITIALIZATION (initialize all models with correct pathing, including YOLO)
-# Devices
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-T = typing.Union[torch.Tensor, torch.nn.Module, typing.List[torch.Tensor],
-                 tuple, dict, typing.Generator]
-
-def device(x: T, dev: str = DEVICE) -> T:
-    """Convenience method to move a tensor/module/other structure containing tensors to the device.
-
-    Args:
-        x (T): the tensor (or strucure containing tensors)
-        dev (str, optional): the device to move the tensor to. Defaults to DEVICE.
-
-    Raises:
-        TypeError: if the type was not a compatible tensor
-
-    Returns:
-        T: the input tensor moved to the device
-    """
-
-    to = functools.partial(device, dev=dev)
-    if isinstance(x, (torch.Tensor, torch.nn.Module)):
-        return x.to(dev)
-    elif isinstance(x, list):
-        return list(map(to, x))
-    elif isinstance(x, tuple):
-        return tuple(map(to, x))
-    elif isinstance(x, dict):
-        return {k: to(v) for k, v in x.items()}
-    elif isinstance(x, Iterable):
-        return map(to, x)
-    else:
-        raise TypeError
-
 yolo_model, (occupancy_model, occupancy_cfg), corner_cfg = yolo(), get_occupancy(), get_corner()
 
-""" if True:
-    yolo_model.compile(optimizer=Adam(lr=1e-3), loss={
-        # use custom yolo_loss Lambda layer.
-        'yolo_loss': lambda y_true, y_pred: y_pred}) """
-
-
 ### 2) INFERENCE CLASS (create class for inference, using chess API) // create modifiable state since we want to extend to video
-def detect_img(yolo, path):
-    end = True
-    while end:
-        img = path
-        try:
-            image = Image.open(img)
-        except:
-            #print('Open Error! Try again!')
-            image = path
-        finally:
-            r_image, info = yolo.detect_image(image)
-            #r_image.show()
-            end = False
-    return r_image, info
-
 class Arbiter:
     def __init__(self):
         self.squares = list(chess.SQUARES)
         self.log = []
         self.occupancy_transforms = build_transforms(
             occupancy_cfg, mode=Datasets.TEST)
-        
-
-    def piece_dict(self, str):
-        if str == 'bishop':
-            return chess.Piece(chess.BISHOP, chess.WHITE)
-        if str == 'black-bishop':
-            return chess.Piece(chess.BISHOP, chess.BLACK)
-        if str == 'black-king':
-            return chess.Piece(chess.KING, chess.BLACK)
-        if str == 'black-knight':
-            return chess.Piece(chess.KNIGHT, chess.BLACK)
-        if str == 'black-pawn':
-            return chess.Piece(chess.PAWN, chess.BLACK)
-        if str == 'black-queen':
-            return chess.Piece(chess.QUEEN, chess.BLACK)
-        if str == 'black-rook':
-            return chess.Piece(chess.ROOK, chess.BLACK)
-        if str == 'white-bishop':
-            return chess.Piece(chess.BISHOP, chess.WHITE)
-        if str == 'white-king':
-            return chess.Piece(chess.KING, chess.WHITE)
-        if str == 'white-knight':
-            return chess.Piece(chess.KNIGHT, chess.WHITE)
-        if str == 'white-pawn':
-            return chess.Piece(chess.PAWN, chess.WHITE)
-        if str == 'white-queen':
-            return chess.Piece(chess.QUEEN, chess.WHITE)
-        if str == 'white-rook':
-            return chess.Piece(chess.ROOK, chess.WHITE)
-        else:
-            return None
 
     ### 3) OCCUPANCY CLASSIFICATION (using chesscog's functionality)
     def classify_occupancy(self, img: np.ndarray, turn: chess.Color, corners: np.ndarray) -> np.ndarray:
@@ -147,7 +60,6 @@ class Arbiter:
     def predict(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
         with torch.no_grad():
             from timeit import default_timer as timer
-            img, img_scale = resize_image(corner_cfg, img)
             t1 = timer()
             corners = find_corners(corner_cfg, img)
             occupancy, warped, cached_imgs = self.classify_occupancy(img, turn, corners)
@@ -168,7 +80,7 @@ class Arbiter:
                 if located_square is None:
                     pass
                 else:
-                    piece = self.piece_dict(class_names[label])
+                    piece = piece_dict(class_names[label])
                     file, rank = (int) (located_square/8), (located_square % 8) - 1
                     if located_square not in classify_dict:
                         classify_dict[located_square] = score
@@ -179,7 +91,6 @@ class Arbiter:
                             board.set_piece_at(chess.square(rank, file), piece)            
 
             yolo_model.close_session()
-
             t2 = timer()
             print(t2 - t1)
 
@@ -192,7 +103,6 @@ class Arbiter:
         '''
         with torch.no_grad():
             from timeit import default_timer as timer
-            img, img_scale = resize_image(corner_cfg, img)
             t1 = timer()
             corners = find_corners(corner_cfg, img)
             occupancy, warped, cached_imgs = self.classify_occupancy(img, turn, corners)
@@ -248,14 +158,13 @@ class Arbiter:
         pass
 
         
-    
-        
-img = cv2.imread('testing.jpg')
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-recognizer = Arbiter()
-board, warped, segmented_img, temp_occ = recognizer.predict(img)
-print(f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
-segmented_img.show()
+if __name__ == '__main__':   
+    img = cv2.imread('testing.jpg')
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    recognizer = Arbiter()
+    board, warped, segmented_img, temp_occ = recognizer.predict(img)
+    print(f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
+    segmented_img.show()
 
 
 
