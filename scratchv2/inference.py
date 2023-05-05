@@ -60,7 +60,9 @@ class Arbiter:
         return occupancy, warped, cached_imgs
     
     def predict(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
-        self.yolo_model = yolo()
+        if self.yolo_model is None:
+            self.yolo_model = yolo()
+
         with torch.no_grad():
             from timeit import default_timer as timer
             img, img_scale = resize_image(corner_cfg, img)
@@ -170,7 +172,9 @@ class Arbiter:
         Poor performance when we predict square by square, showing that our model is likely
         scale-sensitive -> could improve by augmenting training dataset.
         '''
-        self.yolo_model = yolo()
+        if self.yolo_model is None:  
+            self.yolo_model = yolo()
+            
         with torch.no_grad():
             from timeit import default_timer as timer
             t1 = timer()
@@ -185,47 +189,26 @@ class Arbiter:
                     segmented_img.show()
             self.yolo_model.close_session()
         
-    def video_predict(video_path, output_path):
-        """ import timer
-        vid = cv2.VideoCapture(video_path)
-        if not vid.isOpened():
-            raise IOError("Couldn't open webcam or video")
-        
-        video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
-        video_fps       = vid.get(cv2.CAP_PROP_FPS)
-        video_size      = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                            int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-        print("!!! TYPE:", type(output_path), type(video_FourCC), type(video_fps), type(video_size))
-        out = cv2.VideoWriter(output_path, video_FourCC, video_fps, video_size)
+    def video_predict(self, video_path):
+        cap = cv2.VideoCapture(video_path)
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        save_interval = 200
 
-        accum_time = 0
-        curr_fps = 0
-        fps = "FPS: ??"
-        prev_time = timer()
-        while True:
-            return_value, frame = vid.read()
-            image = Image.fromarray(frame)
-            image, _ = yolo.detect_image(image)
-            result = np.asarray(image)
-            curr_time = timer()
-            exec_time = curr_time - prev_time
-            prev_time = curr_time
-            accum_time = accum_time + exec_time
-            curr_fps = curr_fps + 1
-            if accum_time > 1:
-                accum_time = accum_time - 1
-                fps = "FPS: " + str(curr_fps)
-                curr_fps = 0
-            cv2.putText(result, text=fps, org=(3, 15), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                        fontScale=0.50, color=(255, 0, 0), thickness=2)
-            cv2.namedWindow("result", cv2.WINDOW_NORMAL)
-            cv2.imshow("result", result)
-            if isOutput:
-                out.write(result)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+        frame_count = 0
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                frame_count += 1
+                if frame_count % (fps * save_interval) == 0:
+                    board, warped, segmented_img, occupancy = self.predict(frame)
+                    self.log.append(board.board_fen())
+            else:
                 break
-        yolo.close_session() """
-        pass
+
+        cap.release()
+        cv2.destroyAllWindows()
+        if self.yolo_model is not None:
+            self.yolo_model.close_session()
 
         
 if __name__ == '__main__':   
@@ -234,12 +217,16 @@ if __name__ == '__main__':
             description="Run the chess recognition pipeline on an input image")
     parser.add_argument('--occupancy', action='store_true', help='Only predict occupancy')
     parser.add_argument('--robust', action='store_true', help='Ensemble-based inference with multiple models')
+    parser.add_argument('--video', action='store_true', help='Testing the video pipeline')
     args = parser.parse_args()
 
     img = cv2.imread('test2.jpg')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     recognizer = Arbiter()
-    if not args.occupancy: 
+    if args.video:
+        recognizer.video_predict('video.mp4')
+        print(f"Log of the board states: {recognizer.log}")
+    elif not args.occupancy: 
         if args.robust:
             board, warped, segmented_img, temp_occ = recognizer.predict_robust(img)
         else:
