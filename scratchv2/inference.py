@@ -25,13 +25,14 @@ tf.get_logger().setLevel(logging.ERROR)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 ### 1) MODEL INITIALIZATION (initialize all models with correct pathing, including YOLO)
-yolo_model, (occupancy_model, occupancy_cfg), corner_cfg = yolo(), get_occupancy(), get_corner()
+(occupancy_model, occupancy_cfg), corner_cfg = get_occupancy(), get_corner()
 
 ### 2) INFERENCE CLASS (create class for inference, using chess API) // create modifiable state since we want to extend to video
 class Arbiter:
     def __init__(self):
         self.squares = list(chess.SQUARES)
         self.log = []
+        self.yolo_model = None
         self.occupancy_transforms = build_transforms(
             occupancy_cfg, mode=Datasets.TEST)
 
@@ -50,7 +51,6 @@ class Arbiter:
 
         square_imgs = map(self.occupancy_transforms, square_imgs)
         square_imgs = list(square_imgs)
-
         square_imgs = torch.stack(square_imgs)
         square_imgs = device(square_imgs)
         occupancy = occupancy_model(square_imgs)
@@ -60,25 +60,29 @@ class Arbiter:
         return occupancy, warped, cached_imgs
     
     def predict(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
+        self.yolo_model = yolo()
         with torch.no_grad():
             from timeit import default_timer as timer
             img, img_scale = resize_image(corner_cfg, img)
             t1 = timer()
             corners = find_corners(corner_cfg, img)
-            occupancy, warped, cached_imgs = self.classify_occupancy(img, turn, corners)
-            segmented_img, info = detect_img(yolo_model, Image.fromarray(warped))
+            occupancy, warped, _ = self.classify_occupancy(img, turn, corners)
+            segmented_img, info = detect_img(self.yolo_model, Image.fromarray(warped))
 
             boxes, scores, box_scores, class_names, classes = info['boxes'], info['scores'], info['box_scores'], info['class_names'], info['classes']
             new_corners = find_corners(corner_cfg, warped)
+
+            assert len(box_scores) == len(classes)
+
             classify_dict = {}
 
             temp_occ = np.array(occupancy).reshape(8, 8)
-            temp_occ = np.transpose(np.flip(np.flip(temp_occ, axis=0), axis=1))
+            temp_occ = np.flip(np.flip(temp_occ, axis=0), axis=1)
             temp_occ = list(temp_occ.flatten())
 
             board = chess.Board()
             board.clear_board()
-            for box, label, score in zip(boxes, classes, scores):
+            for box, label, score, box_score in zip(boxes, classes, scores, box_scores):
                 located_square = create_occupancy_dataset.find_square(box, new_corners)
                 if located_square is None:
                     pass
@@ -91,13 +95,68 @@ class Arbiter:
                     else:
                         if score > classify_dict[located_square]:
                             classify_dict[located_square] = score
-                            board.set_piece_at(chess.square(rank, file), piece)            
+                            board.set_piece_at(chess.square(rank, file), piece)
 
-            yolo_model.close_session()
+            self.yolo_model.close_session()
             t2 = timer()
             print(t2 - t1)
 
-            return board, warped, segmented_img, temp_occ
+            return board, warped, segmented_img, occupancy
+        
+    def predict_robust(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
+        print('May take a while to load YOLO models...\n')
+
+        YOLO_COUNT = 3
+        model_list = []
+        for i in range(YOLO_COUNT):
+            model_list.append(yolo())
+
+        log_dict = dict.fromkeys(chess.SQUARES)
+        for key in log_dict:
+            log_dict[key] = None
+
+        with torch.no_grad():
+            from timeit import default_timer as timer
+            img, img_scale = resize_image(corner_cfg, img)
+            t1 = timer()
+            corners = find_corners(corner_cfg, img)
+            occupancy, warped, _ = self.classify_occupancy(img, turn, corners)
+            new_corners = find_corners(corner_cfg, warped)
+            
+            for yolo_model in model_list:
+                segmented_img, info = detect_img(yolo_model, Image.fromarray(warped))
+
+                boxes, scores, box_scores, class_names, classes = info['boxes'], info['scores'], info['box_scores'], info['class_names'], info['classes']
+
+                for box, box_score in zip(boxes, box_scores):
+                    located_square = create_occupancy_dataset.find_square(box, new_corners)
+                    if located_square is None:
+                        pass
+                    else:
+                        file, rank = (int) (located_square/8), (located_square % 8)
+                        piece_key = chess.square(rank, file)
+                        if log_dict[piece_key] is None:
+                            log_dict[piece_key] = box_score
+                        else:
+                            log_dict[piece_key] += box_score
+            yolo_model.close_session()
+
+        board = chess.Board()
+        board.clear_board()
+        for key in log_dict:
+            if log_dict[key] is None:
+                pass
+            else:
+                print(key, np.argmax(log_dict[key]))
+                piece = class_names[np.argmax(log_dict[key])]
+                piece = piece_dict(piece)
+                board.set_piece_at(key, piece)
+
+        t2 = timer()
+        print(t2 - t1)
+        print(class_names)
+
+        return board, warped, segmented_img, occupancy
         
     def predict_just_occupancy(self, img: np.ndarray, turn: chess.Color = chess.WHITE):
         corners = find_corners(corner_cfg, img)
@@ -111,6 +170,7 @@ class Arbiter:
         Poor performance when we predict square by square, showing that our model is likely
         scale-sensitive -> could improve by augmenting training dataset.
         '''
+        self.yolo_model = yolo()
         with torch.no_grad():
             from timeit import default_timer as timer
             t1 = timer()
@@ -120,10 +180,10 @@ class Arbiter:
             for idx, (occupied, square) in enumerate(zip(occupancy, cached_imgs)):
                 print(f'Value: {idx}  Occupancy: {occupied}')
                 square = square.resize((1200, 1200))
-                segmented_img, info = detect_img(yolo_model, square)
+                segmented_img, info = detect_img(self.yolo_model, square)
                 if occupied:
                     segmented_img.show()
-            yolo_model.close_session()
+            self.yolo_model.close_session()
         
     def video_predict(video_path, output_path):
         """ import timer
@@ -173,14 +233,19 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
             description="Run the chess recognition pipeline on an input image")
     parser.add_argument('--occupancy', action='store_true', help='Only predict occupancy')
+    parser.add_argument('--robust', action='store_true', help='Ensemble-based inference with multiple models')
     args = parser.parse_args()
 
-    img = cv2.imread('warped.jpg')
+    img = cv2.imread('test2.jpg')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     recognizer = Arbiter()
     if not args.occupancy: 
-        board, warped, segmented_img, temp_occ = recognizer.predict(img)
+        if args.robust:
+            board, warped, segmented_img, temp_occ = recognizer.predict_robust(img)
+        else:
+            board, warped, segmented_img, temp_occ = recognizer.predict(img)
         print(f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
+        print(np.array(temp_occ).reshape(8,8))
         segmented_img.show()
     else:
         occupancy1 = recognizer.predict_just_occupancy(img)

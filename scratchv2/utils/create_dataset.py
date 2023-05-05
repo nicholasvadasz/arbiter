@@ -23,6 +23,7 @@ import numpy as np
 import chess
 import os
 import shutil
+import random
 from recap import URI
 
 RENDERS_DIR = None
@@ -73,7 +74,8 @@ def crop_square(img: np.ndarray, square: chess.Square, turn: chess.Color) -> np.
 
 def find_square(box, new_corners):
     y0, x0, y1, x1 = box
-    center_x, center_y = (x0 + x1) / 2, (y0 + (5*y1)) / 6
+    h_scale, v_scale = 0.5, 0.15
+    center_x, center_y = (h_scale * x0) + ((1 - h_scale) * x1), (v_scale * y0) + ((1 - v_scale) * y1)
     avg_left = (new_corners[0][0] + new_corners[3][0]) / 2
     avg_right = (new_corners[1][0] + new_corners[2][0]) / 2
     avg_top = (new_corners[0][1] + new_corners[1][1]) / 2
@@ -82,9 +84,10 @@ def find_square(box, new_corners):
     file = int(8*(center_y - avg_top) / (avg_bottom - avg_top))
     
     if rank not in range(0, 8) or file not in range(0, 8):
-        return None
-    else:
-        return chess.square(file, rank)
+        file = sorted((0, file, 8))[1]
+        rank = sorted((0, rank, 8))[1]
+    
+    return chess.square(file, rank)
 
 
 def warp_chessboard_image(img: np.ndarray, corners: np.ndarray) -> np.ndarray:
