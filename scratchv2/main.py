@@ -68,29 +68,29 @@ while True:
     window["cam1"].update(data=imgbytes)
     time_since_last_update += time.time() - start_time
     if time_since_last_update > 5:
-        # returnBoard = inference.videopipeline()
-        # time.sleep(3)
-        # with Capturing() as output:
-        #     print(returnBoard)
-        # newboard_str = ""
-        # for i in range(8):
-        #     for j in range(15):
-        #         if output[i][j] == '.':
-        #             newboard_str += '.'
-        #         if output[i][j] == ' ':
-        #             pass
-        #         else:
-        #             newboard_str += output[i][j]
-        # for i in range(8):
-        #     for j in range(8):
-        #         if board_str[i*8+j] != newboard_str[i*8+j]:
-        #             if newboard_str[i*8+j] == '.':
-        #                 board[i][j].update(image_filename=f'./pieces/empty.png')
-        #             else:
-        #                 piece = newboard_str[i*8+j]
-        #                 white = piece.isupper()
-        #                 color = 'white' if white else 'black'
-        #                 board[i][j].update(image_filename=f'./pieces/{color}{piece.lower()}.png')
+        returnBoard = inference.videopipeline()
+        time.sleep(3)
+        with Capturing() as output:
+            print(returnBoard)
+        newboard_str = ""
+        for i in range(8):
+            for j in range(15):
+                if output[i][j] == '.':
+                    newboard_str += '.'
+                if output[i][j] == ' ':
+                    pass
+                else:
+                    newboard_str += output[i][j]
+        for i in range(8):
+            for j in range(8):
+                if board_str[i*8+j] != newboard_str[i*8+j]:
+                    if newboard_str[i*8+j] == '.':
+                        board[i][j].update(image_filename=f'./pieces/empty.png')
+                    else:
+                        piece = newboard_str[i*8+j]
+                        white = piece.isupper()
+                        color = 'white' if white else 'black'
+                        board[i][j].update(image_filename=f'./pieces/{color}{piece.lower()}.png')
         window["board"].update(board)
         window.refresh()        
         time_since_last_update = 0

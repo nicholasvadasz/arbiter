@@ -99,7 +99,8 @@ class Arbiter:
                             classify_dict[located_square] = score
                             board.set_piece_at(chess.square(rank, file), piece)
 
-            self.yolo_model.close_session()
+            # perhaps uncomment this - nick
+            # self.yolo_model.close_session()
             t2 = timer()
             print(t2 - t1)
 
@@ -141,7 +142,8 @@ class Arbiter:
                             log_dict[piece_key] = box_score
                         else:
                             log_dict[piece_key] += box_score
-            yolo_model.close_session()
+            # perhaps uncomment this - nick
+            # yolo_model.close_session()
 
         board = chess.Board()
         board.clear_board()
@@ -187,7 +189,8 @@ class Arbiter:
                 segmented_img, info = detect_img(self.yolo_model, square)
                 if occupied:
                     segmented_img.show()
-            self.yolo_model.close_session()
+            # perhaps uncomment this - nick
+            # self.yolo_model.close_session()
         
     def video_predict(self, video_path):
         cap = cv2.VideoCapture(video_path)
@@ -207,8 +210,9 @@ class Arbiter:
 
         cap.release()
         cv2.destroyAllWindows()
-        if self.yolo_model is not None:
-            self.yolo_model.close_session()
+        # perhaps uncomment this - nick
+        # if self.yolo_model is not None:
+            # self.yolo_model.close_session()
 
         
 if __name__ == '__main__':   
