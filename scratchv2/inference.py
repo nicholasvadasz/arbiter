@@ -240,6 +240,13 @@ if __name__ == '__main__':
 
     ### 4) FULL CLASSIFICATION (combining occupancy and YOLO) // might need some helpers to abstract this into the class
 
+def videopipeline():
+    img = cv2.imread('test2.jpg')
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    recognizer = Arbiter()
+    board, _, _, _ = recognizer.predict(img)
+    return board
+
 '''
 
 def main(classifiers_folder: Path = URI("models://"), setup: callable = lambda: None):
