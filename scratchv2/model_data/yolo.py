@@ -172,3 +172,6 @@ class YOLO(object):
 
     def close_session(self):
         self.sess.close()
+
+    def open_session(self):
+        self.sess = K.get_session()

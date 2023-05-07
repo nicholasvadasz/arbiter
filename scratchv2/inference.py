@@ -248,7 +248,8 @@ def videopipeline():
     img = cv2.imread('test2.jpg')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     recognizer = Arbiter()
-    board, _, _, _ = recognizer.predict(img)
+    board, warped, segmented_img, temp_occ = recognizer.predict(img)
+    # segmented_img.show()
     return board
 
 '''
