@@ -7,4 +7,4 @@
 #### CD into SCRATCHv2
 #### Run `python inference.py`
 #### You will be missing some dependencies (~5), install as you go.
-#### Viola! You should be able to run inference.py now.
+#### Voila! You should be able to run inference.py now.
