@@ -14,17 +14,16 @@ class Capturing(list):
         return self
     def __exit__(self, *args):
         self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio    # free up some memory
+        del self._stringio    
         sys.stdout = self._stdout
 
-# Camera Settings
-camera_Width  = 320 # 480 # 640 # 1024 # 1280
-camera_Heigth = 240 # 320 # 480 # 780  # 960
+camera_Width  = 320 
+camera_Heigth = 240 
 frameSize = (camera_Width, camera_Heigth)
 video_capture = cv2.VideoCapture(0)
 time.sleep(2.0)
 
-stock = Stockfish("../../Stockfish/src/stockfish")
+stock = Stockfish("./stockfish")
 stock.set_fen_position("rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2")
 total_eval = stock.get_evaluation()
 centipawn = float(total_eval["value"]) / 100  
@@ -52,7 +51,6 @@ board = make_board(board_str)
 evalFont = ("Noto Sans Lydian", 20)
 evaluation_layout = [[sg.Text("EVALUATION:", font=evalFont), sg.Text(f"{negative_or_positive}{centipawn:.2f}", font=evalFont, key="eval")]]
 
-# put evaluation under webcam
 colwebcam1_layout = [[sg.Image(filename="", key="cam1")],
                     [sg.Column(evaluation_layout, element_justification='center', key="evaluation")]]
 colwebcam1 = sg.Column(colwebcam1_layout, element_justification='center', key="webcam1")
@@ -76,8 +74,9 @@ while True:
     frame = cv2.resize(frameOrig, frameSize)
     imgbytes = cv2.imencode(".png", frame)[1].tobytes()
     window["cam1"].update(data=imgbytes)
+    
     if event == 'p':
-        returnBoard = inference.videopipeline()
+        returnBoard = inference.videopipeline(imgbytes)
         stock.set_fen_position(returnBoard.board_fen())
         total_eval = stock.get_evaluation()
         centipawn = float(total_eval["value"]) / 100

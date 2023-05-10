@@ -192,31 +192,9 @@ class Arbiter:
             # perhaps uncomment this - nick
             # self.yolo_model.close_session()
         
-    def video_predict(self, video_path):
-        cap = cv2.VideoCapture(video_path)
-        fps = int(cap.get(cv2.CAP_PROP_FPS))
-        save_interval = 200
-
-        frame_count = 0
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if ret:
-                frame_count += 1
-                if frame_count % (fps * save_interval) == 0:
-                    board, warped, segmented_img, occupancy = self.predict(frame)
-                    self.log.append(board.board_fen())
-            else:
-                break
-
-        cap.release()
-        cv2.destroyAllWindows()
-        # perhaps uncomment this - nick
-        # if self.yolo_model is not None:
-            # self.yolo_model.close_session()
 
         
 if __name__ == '__main__':   
-    # add argument that determines if we are predicting or just making occupancy dataset
     parser = argparse.ArgumentParser(
             description="Run the chess recognition pipeline on an input image")
     parser.add_argument('--occupancy', action='store_true', help='Only predict occupancy')
@@ -242,47 +220,11 @@ if __name__ == '__main__':
         occupancy1 = recognizer.predict_just_occupancy(img)
         print(occupancy1)
 
-    ### 4) FULL CLASSIFICATION (combining occupancy and YOLO) // might need some helpers to abstract this into the class
 
-def videopipeline():
-    img = cv2.imread('test2.jpg')
+def videopipeline(imgdata):
+    img = cv2.imread(imgdata)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     recognizer = Arbiter()
     board, warped, segmented_img, temp_occ = recognizer.predict(img)
-    # segmented_img.show()
+    segmented_img.show()
     return board
-
-'''
-
-def main(classifiers_folder: Path = URI("models://"), setup: callable = lambda: None):
-    #Main method for running inference from the command line.
-
-    #Args:
-        #classifiers_folder (Path, optional): the path to the classifiers (supplying a different path is especially useful because the transfer learning classifiers are located at ``models://transfer_learning``). Defaults to ``models://``.
-       # setup (callable, optional): An optional setup function to be called after the CLI argument parser has been setup. Defaults to lambda:None.
-    
-
-    parser = argparse.ArgumentParser(
-        description="Run the chess recognition pipeline on an input image")
-    parser.add_argument("file", help="path to the input image", type=str)
-    parser.add_argument(
-        "--white", help="indicate that the image is from the white player's perspective (default)", action="store_true", dest="color")
-    parser.add_argument(
-        "--black", help="indicate that the image is from the black player's perspective", action="store_false", dest="color")
-    parser.set_defaults(color=True)
-    args = parser.parse_args()
-
-    setup()
-
-    img = cv2.imread(str(URI(args.file)))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    recognizer = ChessRecognizer(classifiers_folder)
-    board, *_ = recognizer.predict(img, args.color)
-    print()
-    print(
-        f"You can view this position at https://lichess.org/editor/{board.board_fen()}")
-
-    if board.status() != Status.VALID:
-        print()
-        print("WARNING: The predicted chess position is not legal according to the rules of chess.")
-        print("         You might want to try again with another picture.") '''
